@@ -7,7 +7,6 @@
 تطبيق ذكي لاستنطاق حكايات النباتات في مهرجان الحمضيات بالحريق  
 An AI-powered storytelling app for the Al-Hariq Citrus Festival
 
-View your app in AI Studio: https://ai.studio/apps/drive/1tm-UIL90H7oK_-171HOyspTkqUlYFhMc
 
 ---
 
