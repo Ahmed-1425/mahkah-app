@@ -8,6 +8,8 @@ interface RequestBody {
 }
 
 interface AIResponse {
+  is_plant: boolean;
+  error_message?: string;
   title: string;
   story: string;
   fun_fact: string;
@@ -60,19 +62,29 @@ export const handler: Handler = async (event: HandlerEvent) => {
       : imageBase64;
 
     // بناء System Instruction
-    const prompt = `You are a storytelling guide at Al-Hariq Citrus Festival. Create a ${lang === 'ar' ? 'short Arabic' : 'short English'} story (80-120 words) about this plant for ${visitorName}, a ${visitorType}.
+    const prompt = `You are a plant expert at Al-Hariq Agri-Tourism Festival in Saudi Arabia.
 
-Return ONLY valid JSON:
+STEP 1: Analyze the image. Is it a PLANT (tree, flower, herb, vegetable, fruit, shrub, cactus, etc.)?
+
+If NOT a plant (person, animal, building, object, food, etc.):
+Return JSON: {"is_plant": false, "error_message": "${lang === 'ar' ? 'عذراً، هذه الصورة لا تحتوي على نبتة! 🌱 يرجى تصوير نبتة أو شجرة.' : 'Sorry, this image does not contain a plant! 🌱 Please photograph a plant or tree.'}", "title": "", "story": "", "fun_fact": "", "question": "", "suggested_plant_name": "", "seasonal_status_hint": ""}
+
+If YES a plant:
+Create a ${lang === 'ar' ? 'captivating Arabic' : 'captivating English'} story (100-150 words) for ${visitorName}, a ${visitorType}.
+
+Return JSON:
 {
-  "title": "Story title",
-  "story": "80-120 word story connecting to Al-Hariq citrus heritage",
-  "fun_fact": "Agricultural fact",
-  "question": "Question for visitor",
-  "suggested_plant_name": "Plant nickname",
-  "seasonal_status_hint": "Season info"
+  "is_plant": true,
+  "title": "Engaging title",
+  "story": "Story connecting plant to Saudi agriculture/Al-Hariq region if citrus, otherwise general agricultural wisdom",
+  "fun_fact": "Interesting fact about this plant type",
+  "question": "Thought-provoking question",
+  "suggested_plant_name": "Creative nickname in ${lang === 'ar' ? 'Arabic' : 'English'}",
+  "seasonal_status_hint": "Season/growth info"
 }
 
-Style: ${visitorType === 'child' ? 'magical' : visitorType === 'family' ? 'nostalgic' : 'inspiring'}. No markdown.`.trim();
+Style: ${visitorType === 'child' ? 'magical, wonder-filled' : visitorType === 'family' ? 'warm, nostalgic' : 'inspiring, cultural'}. 
+Return ONLY valid JSON, no markdown.`.trim();
 
     // استدعاء Google Gemini API
     // استخدام gemini-2.5-flash - الأحدث ومتاح للـ free tier
@@ -230,7 +242,26 @@ Style: ${visitorType === 'child' ? 'magical' : visitorType === 'family' ? 'nosta
       }
     }
 
-    console.log('[Story Function] Success! Returning story');
+    console.log('[Story Function] Success! Parsing complete');
+    
+    // التحقق من أن الصورة تحتوي على نبات
+    if (!aiResponse.is_plant) {
+      console.log('[Story Function] Image is not a plant, returning error');
+      return {
+        statusCode: 400,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          error: 'not_a_plant',
+          message: aiResponse.error_message || (lang === 'ar' 
+            ? 'عذراً، هذه الصورة لا تحتوي على نبتة! 🌱'
+            : 'Sorry, this image does not contain a plant! 🌱')
+        })
+      };
+    }
+    
+    console.log('[Story Function] Success! Returning story for plant');
     
     return {
       statusCode: 200,

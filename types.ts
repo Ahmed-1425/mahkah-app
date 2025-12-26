@@ -26,6 +26,8 @@ export interface PlantMemory {
 }
 
 export interface AIResponse {
+  is_plant?: boolean;
+  error_message?: string;
   title: string;
   story: string;
   fun_fact: string;

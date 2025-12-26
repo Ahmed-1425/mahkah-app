@@ -479,11 +479,16 @@ const App: React.FC = () => {
       console.error('Story generation error:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
       const isRateLimitError = errorMessage.includes('429') || errorMessage.includes('مزدحمة');
+      const isNotPlantError = errorMessage.includes('400') || errorMessage.includes('not_a_plant') || errorMessage.includes('لا تحتوي على نبتة');
       
       // عرض رسالة خطأ مفصلة
       let userMessage = '';
       
-      if (isRateLimitError) {
+      if (isNotPlantError) {
+        userMessage = lang === 'ar' 
+          ? '🚫 عذراً، هذه الصورة لا تحتوي على نبتة!\n\n🌱 يرجى تصوير:\n• شجرة\n• زهرة\n• نبتة خضراء\n• أي نوع من النباتات'
+          : '🚫 Sorry, this image does not contain a plant!\n\n🌱 Please photograph:\n• A tree\n• A flower\n• A green plant\n• Any type of vegetation';
+      } else if (isRateLimitError) {
         userMessage = lang === 'ar' 
           ? '⏳ الخدمة مزدحمة حالياً بسبب عدد الزوار. يرجى الانتظار 10-20 ثانية والمحاولة مرة أخرى.' 
           : '⏳ Service is busy due to high traffic. Please wait 10-20 seconds and try again.';
@@ -497,8 +502,8 @@ const App: React.FC = () => {
           : '❌ Service unavailable. Please contact support.';
       } else {
         userMessage = lang === 'ar' 
-          ? 'حدث خطأ في استنطاق الحكاية. حاول مرة أخرى.\n\n' + (errorMessage.length < 100 ? errorMessage : '')
-          : 'Error generating story. Try again.\n\n' + (errorMessage.length < 100 ? errorMessage : '');
+          ? 'حدث خطأ في استنطاق الحكاية. حاول مرة أخرى.'
+          : 'Error generating story. Try again.';
       }
       
       alert(userMessage);
