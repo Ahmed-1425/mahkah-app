@@ -477,7 +477,18 @@ const App: React.FC = () => {
       setScreen('story');
     } catch (error) {
       console.error(error);
-      alert(lang === 'ar' ? 'حدث خطأ في استنطاق الحكاية. حاول مرة أخرى.' : 'Error generating story. Try again.');
+      const errorMessage = error instanceof Error ? error.message : '';
+      const isRateLimitError = errorMessage.includes('429') || errorMessage.includes('مزدحمة');
+      
+      if (isRateLimitError) {
+        alert(lang === 'ar' 
+          ? '⏳ الخدمة مزدحمة حالياً بسبب عدد الزوار. يرجى الانتظار 10-20 ثانية والمحاولة مرة أخرى.' 
+          : '⏳ Service is busy due to high traffic. Please wait 10-20 seconds and try again.');
+      } else {
+        alert(lang === 'ar' 
+          ? 'حدث خطأ في استنطاق الحكاية. حاول مرة أخرى.' 
+          : 'Error generating story. Try again.');
+      }
       setScreen('upload');
     }
   };

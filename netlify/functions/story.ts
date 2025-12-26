@@ -112,24 +112,49 @@ IMPORTANT: Return ONLY a valid JSON object (no markdown, no code blocks, no back
 
     console.log('[Story Function] Calling Gemini API...');
     
-    const response = await fetch(`${apiUrl}?key=${API_KEY}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody)
-    });
+    // محاولة مع retry للـ rate limiting
+    let response;
+    let retries = 3;
+    
+    for (let i = 0; i < retries; i++) {
+      response = await fetch(`${apiUrl}?key=${API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
 
-    console.log('[Story Function] Gemini API response status:', response.status);
+      console.log('[Story Function] Gemini API response status:', response.status, `(attempt ${i + 1}/${retries})`);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[Story Function] Gemini API Error:', errorText);
-      return {
-        statusCode: response.status,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Failed to generate story', details: errorText })
-      };
+      // إذا نجح، نكمل
+      if (response.ok) {
+        break;
+      }
+
+      // إذا 429 (rate limit), ننتظر ونعيد المحاولة
+      if (response.status === 429 && i < retries - 1) {
+        const waitTime = (i + 1) * 2000; // 2s, 4s, 6s
+        console.log(`[Story Function] Rate limited. Waiting ${waitTime}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+
+      // إذا خطأ ثاني، نرجع الخطأ
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[Story Function] Gemini API Error:', errorText);
+        return {
+          statusCode: response.status,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            error: response.status === 429 
+              ? 'الخدمة مزدحمة حالياً، يرجى المحاولة بعد قليل' 
+              : 'Failed to generate story', 
+            details: errorText 
+          })
+        };
+      }
     }
 
     const data = await response.json();
