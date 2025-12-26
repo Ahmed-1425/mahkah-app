@@ -60,29 +60,19 @@ export const handler: Handler = async (event: HandlerEvent) => {
       : imageBase64;
 
     // بناء System Instruction
-    const prompt = `
-You are an expert storytelling Agri-Tourism Guide at the Al-Hariq Citrus Festival (مهرجان الحمضيات بالحريق).
+    const prompt = `You are a storytelling guide at Al-Hariq Citrus Festival. Create a ${lang === 'ar' ? 'short Arabic' : 'short English'} story (80-120 words) about this plant for ${visitorName}, a ${visitorType}.
 
-A visitor named ${visitorName} who is a ${visitorType} just took this photo in an Al-Hariq farm.
-
-Create a magical story about this plant in ${lang === 'ar' ? 'Arabic' : 'English'}.
-
-Guidelines:
-- TONE: ${visitorType === 'child' ? 'Whimsical, magical, fairy-tale like' : visitorType === 'family' ? 'Nostalgic, bonding, about roots and heritage' : 'Inspiring, cultural, legendary'}.
-- Story Length: 120-200 words.
-- Connect to Al-Hariq's citrus heritage.
-- Keep plant identification general (شجرة/نبتة).
-
-IMPORTANT: Return ONLY a valid JSON object (no markdown, no code blocks, no backticks) with this exact structure:
+Return ONLY valid JSON:
 {
-  "title": "عنوان القصة",
-  "story": "القصة الكاملة هنا...",
-  "fun_fact": "معلومة زراعية ممتعة",
-  "question": "سؤال للزائر",
-  "suggested_plant_name": "اسم مقترح للنبتة",
-  "seasonal_status_hint": "حالة موسمية"
+  "title": "Story title",
+  "story": "80-120 word story connecting to Al-Hariq citrus heritage",
+  "fun_fact": "Agricultural fact",
+  "question": "Question for visitor",
+  "suggested_plant_name": "Plant nickname",
+  "seasonal_status_hint": "Season info"
 }
-    `.trim();
+
+Style: ${visitorType === 'child' ? 'magical' : visitorType === 'family' ? 'nostalgic' : 'inspiring'}. No markdown.`.trim();
 
     // استدعاء Google Gemini API
     // استخدام gemini-2.5-flash - الأحدث ومتاح للـ free tier
@@ -106,7 +96,8 @@ IMPORTANT: Return ONLY a valid JSON object (no markdown, no code blocks, no back
         temperature: 0.7,
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 2048
+        maxOutputTokens: 4096,
+        stopSequences: []
       }
     };
 
@@ -194,15 +185,49 @@ IMPORTANT: Return ONLY a valid JSON object (no markdown, no code blocks, no back
     } catch (e) {
       console.error('[Story Function] Failed to parse. Full text:', text);
       console.error('[Story Function] Parse error:', e);
-      return {
-        statusCode: 500,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          error: 'Invalid AI response format', 
-          fullText: text,
-          parseError: e instanceof Error ? e.message : 'Unknown error'
-        })
-      };
+      
+      // محاولة إصلاح JSON الناقص
+      let fixedText = text.trim();
+      
+      // إذا ما فيه إغلاق للـ JSON، نحاول نكمله
+      const openBraces = (fixedText.match(/{/g) || []).length;
+      const closeBraces = (fixedText.match(/}/g) || []).length;
+      
+      if (openBraces > closeBraces) {
+        console.log('[Story Function] Attempting to fix incomplete JSON...');
+        // نضيف إغلاق للـ strings والـ object
+        if (!fixedText.endsWith('"')) {
+          fixedText += '..."}';
+        }
+        for (let i = 0; i < (openBraces - closeBraces); i++) {
+          fixedText += '}';
+        }
+        
+        try {
+          aiResponse = JSON.parse(fixedText);
+          console.log('[Story Function] Successfully fixed and parsed JSON!');
+        } catch (e2) {
+          return {
+            statusCode: 500,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              error: 'Invalid AI response format', 
+              fullText: text,
+              parseError: e instanceof Error ? e.message : 'Unknown error'
+            })
+          };
+        }
+      } else {
+        return {
+          statusCode: 500,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            error: 'Invalid AI response format', 
+            fullText: text,
+            parseError: e instanceof Error ? e.message : 'Unknown error'
+          })
+        };
+      }
     }
 
     console.log('[Story Function] Success! Returning story');
