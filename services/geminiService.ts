@@ -20,8 +20,18 @@ export const generatePlantStory = async (
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('Netlify Function Error:', errorText);
-    throw new Error(`Failed to generate story: ${response.statusText}`);
+    console.error('Netlify Function Error:', response.status, errorText);
+    
+    let errorData;
+    try {
+      errorData = JSON.parse(errorText);
+    } catch (e) {
+      errorData = { error: errorText };
+    }
+    
+    // رمي error مع تفاصيل أكثر
+    const errorMsg = errorData.error || errorText || response.statusText;
+    throw new Error(`[${response.status}] ${errorMsg}`);
   }
 
   const data = await response.json();

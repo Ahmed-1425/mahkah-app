@@ -476,19 +476,32 @@ const App: React.FC = () => {
       });
       setScreen('story');
     } catch (error) {
-      console.error(error);
-      const errorMessage = error instanceof Error ? error.message : '';
+      console.error('Story generation error:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       const isRateLimitError = errorMessage.includes('429') || errorMessage.includes('مزدحمة');
       
+      // عرض رسالة خطأ مفصلة
+      let userMessage = '';
+      
       if (isRateLimitError) {
-        alert(lang === 'ar' 
+        userMessage = lang === 'ar' 
           ? '⏳ الخدمة مزدحمة حالياً بسبب عدد الزوار. يرجى الانتظار 10-20 ثانية والمحاولة مرة أخرى.' 
-          : '⏳ Service is busy due to high traffic. Please wait 10-20 seconds and try again.');
+          : '⏳ Service is busy due to high traffic. Please wait 10-20 seconds and try again.';
+      } else if (errorMessage.includes('500')) {
+        userMessage = lang === 'ar'
+          ? '❌ خطأ في الخادم. يرجى المحاولة مرة أخرى.'
+          : '❌ Server error. Please try again.';
+      } else if (errorMessage.includes('404')) {
+        userMessage = lang === 'ar'
+          ? '❌ الخدمة غير متاحة حالياً. يرجى التواصل مع الدعم.'
+          : '❌ Service unavailable. Please contact support.';
       } else {
-        alert(lang === 'ar' 
-          ? 'حدث خطأ في استنطاق الحكاية. حاول مرة أخرى.' 
-          : 'Error generating story. Try again.');
+        userMessage = lang === 'ar' 
+          ? 'حدث خطأ في استنطاق الحكاية. حاول مرة أخرى.\n\n' + (errorMessage.length < 100 ? errorMessage : '')
+          : 'Error generating story. Try again.\n\n' + (errorMessage.length < 100 ? errorMessage : '');
       }
+      
+      alert(userMessage);
       setScreen('upload');
     }
   };
