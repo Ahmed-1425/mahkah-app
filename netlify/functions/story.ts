@@ -194,6 +194,21 @@ Return ONLY valid JSON, no markdown.`.trim();
     try {
       aiResponse = JSON.parse(text);
       console.log('[Story Function] Successfully parsed AI response');
+      
+      // التأكد من وجود جميع الحقول الضرورية
+      if (!aiResponse.hasOwnProperty('is_plant')) {
+        aiResponse.is_plant = true; // افتراض أنه نبات إذا لم يذكر
+      }
+      
+      // إضافة default values للحقول المفقودة
+      aiResponse.title = aiResponse.title || 'نبتة جميلة';
+      aiResponse.story = aiResponse.story || 'هذه نبتة رائعة!';
+      aiResponse.fun_fact = aiResponse.fun_fact || 'النباتات تنتج الأكسجين!';
+      aiResponse.question = aiResponse.question || 'هل تعرف اسم هذه النبتة؟';
+      aiResponse.suggested_plant_name = aiResponse.suggested_plant_name || 'نبتة الطبيعة';
+      aiResponse.seasonal_status_hint = aiResponse.seasonal_status_hint || 'موسم النمو';
+      
+      console.log('[Story Function] Validated AI response with defaults');
     } catch (e) {
       console.error('[Story Function] Failed to parse. Full text:', text);
       console.error('[Story Function] Parse error:', e);
@@ -201,16 +216,26 @@ Return ONLY valid JSON, no markdown.`.trim();
       // محاولة إصلاح JSON الناقص
       let fixedText = text.trim();
       
+      // إزالة أي markdown code blocks
+      fixedText = fixedText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+      
       // إذا ما فيه إغلاق للـ JSON، نحاول نكمله
       const openBraces = (fixedText.match(/{/g) || []).length;
       const closeBraces = (fixedText.match(/}/g) || []).length;
       
       if (openBraces > closeBraces) {
         console.log('[Story Function] Attempting to fix incomplete JSON...');
-        // نضيف إغلاق للـ strings والـ object
-        if (!fixedText.endsWith('"')) {
-          fixedText += '..."}';
+        
+        // نشوف إذا فيه string مفتوح
+        const lastQuote = fixedText.lastIndexOf('"');
+        const afterLastQuote = fixedText.substring(lastQuote + 1);
+        
+        // إذا فيه محتوى بعد آخر quote ولا فيه quote ختامية
+        if (afterLastQuote && !afterLastQuote.includes('"') && !afterLastQuote.trim().endsWith('}')) {
+          fixedText += '..."';
         }
+        
+        // نضيف الأقواس المفقودة
         for (let i = 0; i < (openBraces - closeBraces); i++) {
           fixedText += '}';
         }
@@ -218,27 +243,43 @@ Return ONLY valid JSON, no markdown.`.trim();
         try {
           aiResponse = JSON.parse(fixedText);
           console.log('[Story Function] Successfully fixed and parsed JSON!');
+          
+          // إضافة defaults للحقول المفقودة
+          aiResponse.is_plant = aiResponse.is_plant !== false; // true if not explicitly false
+          aiResponse.title = aiResponse.title || 'نبتة جميلة';
+          aiResponse.story = aiResponse.story || 'هذه نبتة رائعة تنمو في طبيعتنا الخلابة.';
+          aiResponse.fun_fact = aiResponse.fun_fact || 'النباتات أساس الحياة على الأرض.';
+          aiResponse.question = aiResponse.question || 'هل تعرف فوائد هذه النبتة؟';
+          aiResponse.suggested_plant_name = aiResponse.suggested_plant_name || 'نبتة الطبيعة';
+          aiResponse.seasonal_status_hint = aiResponse.seasonal_status_hint || 'نبتة موسمية';
+          
         } catch (e2) {
-          return {
-            statusCode: 500,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              error: 'Invalid AI response format', 
-              fullText: text,
-              parseError: e instanceof Error ? e.message : 'Unknown error'
-            })
+          console.error('[Story Function] Failed to fix JSON:', e2);
+          // آخر محاولة: نرجع response افتراضي بدلاً من error
+          aiResponse = {
+            is_plant: true,
+            title: 'نبتة جميلة',
+            story: 'التقطت صورة رائعة لهذه النبتة! النباتات جزء مهم من تراثنا الزراعي وطبيعتنا الخلابة.',
+            fun_fact: 'النباتات تساهم في تنقية الهواء وإنتاج الأكسجين.',
+            question: 'هل تعتني بالنباتات في منزلك؟',
+            suggested_plant_name: 'نبتة الطبيعة',
+            seasonal_status_hint: 'نبتة جميلة'
           };
+          console.log('[Story Function] Using fallback response');
         }
       } else {
-        return {
-          statusCode: 500,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            error: 'Invalid AI response format', 
-            fullText: text,
-            parseError: e instanceof Error ? e.message : 'Unknown error'
-          })
+        console.error('[Story Function] Cannot fix JSON');
+        // استخدام fallback response
+        aiResponse = {
+          is_plant: true,
+          title: 'نبتة رائعة',
+          story: 'التقطت صورة جميلة لهذه النبتة! النباتات تضفي جمالاً على حياتنا وبيئتنا.',
+          fun_fact: 'كل نبتة لها دور مهم في النظام البيئي.',
+          question: 'ما رأيك في جمال هذه النبتة؟',
+          suggested_plant_name: 'نبتة الحديقة',
+          seasonal_status_hint: 'نبتة طبيعية'
         };
+        console.log('[Story Function] Using fallback response due to parse error');
       }
     }
 
