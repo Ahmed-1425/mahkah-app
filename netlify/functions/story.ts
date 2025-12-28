@@ -62,17 +62,28 @@ export const handler: Handler = async (event: HandlerEvent) => {
       : imageBase64;
 
     // بناء System Instruction
-    const prompt = `Expert storyteller at Al-Hariq Festival, Saudi Arabia.
+    const prompt = `You are a plant identification expert at Al-Hariq Agricultural Festival, Saudi Arabia.
 
-ANALYZE IMAGE: Is this a plant/tree?
+STEP 1 - IDENTIFY: Carefully analyze this image. What SPECIFIC plant/tree is this?
+- Look at leaves, bark, fruits, flowers, overall shape
+- Identify the exact species if possible (e.g., "Orange Tree", "Date Palm", "Lemon Tree", "Olive Tree", etc.)
 
-NOT PLANT → {"is_plant":false,"error_message":"${lang === 'ar' ? 'عذراً، ليست نبتة! 🌱' : 'Not a plant! 🌱'}","title":"","story":"","fun_fact":"","question":"","suggested_plant_name":"","seasonal_status_hint":""}
+STEP 2 - VERIFY: Is it actually a plant/tree?
 
-YES PLANT → Write ${lang === 'ar' ? 'Arabic' : 'English'} story (120 words) for ${visitorName}:
+IF NOT A PLANT (person, animal, object, building):
+Return: {"is_plant":false,"error_message":"${lang === 'ar' ? 'ليست نبتة! 🌱' : 'Not a plant! 🌱'}","title":"","story":"","fun_fact":"","question":"","suggested_plant_name":"","seasonal_status_hint":""}
 
-{"is_plant":true,"title":"[catchy title]","story":"[IF CITRUS: link to Al-Hariq citrus heritage. ELSE: Saudi agriculture/nature wisdom. ${visitorType === 'child' ? 'Magical style' : visitorType === 'family' ? 'Nostalgic style' : 'Cultural style'}]","fun_fact":"[fact about plant]","question":"[question to visitor]","suggested_plant_name":"[creative name]","seasonal_status_hint":"[season info]"}
+IF YES A PLANT:
+Write a ${lang === 'ar' ? 'captivating 150-word Arabic' : 'captivating 150-word English'} story for ${visitorName} (${visitorType}) about THIS SPECIFIC plant:
 
-CRITICAL: Return ONLY valid complete JSON. NO markdown. NO truncation.`.trim();
+{"is_plant":true,"title":"[Title mentioning the SPECIFIC plant type]","story":"[Tell story about THIS EXACT plant type. IF it's citrus (orange/lemon/grapefruit): connect to Al-Hariq's famous citrus heritage and valleys. IF it's date palm: talk about its importance in Saudi culture. IF other plant: discuss its role in nature/agriculture. Style: ${visitorType === 'child' ? 'magical, storytelling' : visitorType === 'family' ? 'warm, connecting generations' : 'inspiring, cultural wisdom'}. Mention SPECIFIC characteristics you see in the image!]","fun_fact":"[Interesting fact about THIS specific plant species]","question":"[Question about THIS plant type]","suggested_plant_name":"[Creative Arabic/English nickname based on what you identified]","seasonal_status_hint":"[When THIS plant grows/fruits]"}
+
+CRITICAL:
+- IDENTIFY the specific plant first
+- Write story about THAT EXACT plant
+- Mention visible features from the image
+- Return COMPLETE valid JSON only
+- NO markdown, NO truncation`.trim();
 
     // استدعاء Google Gemini API
     // استخدام gemini-2.5-flash - الأحدث ومتاح للـ free tier
