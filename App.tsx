@@ -182,9 +182,37 @@ const UploadPage: React.FC<{
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // ضغط الصورة قبل العرض والإرسال
       const reader = new FileReader();
       reader.onloadend = () => {
-        setPreview(reader.result as string);
+        const img = new Image();
+        img.onload = () => {
+          // إنشاء canvas لضغط الصورة
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          // تحديد حد أقصى للأبعاد (1200px)
+          const maxSize = 1200;
+          if (width > height && width > maxSize) {
+            height = (height * maxSize) / width;
+            width = maxSize;
+          } else if (height > maxSize) {
+            width = (width * maxSize) / height;
+            height = maxSize;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          // ضغط الصورة بجودة 0.8
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+          setPreview(compressedBase64);
+        };
+        img.src = reader.result as string;
       };
       reader.readAsDataURL(file);
     }

@@ -14,6 +14,8 @@
   directory = "netlify/functions"
   # Node.js runtime للـ functions
   node_bundler = "esbuild"
+  # زيادة timeout للصور الكبيرة
+  timeout = 30
 
 # إعدادات التطوير المحلي
 [dev]

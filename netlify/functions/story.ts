@@ -45,7 +45,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
     const body: RequestBody = JSON.parse(event.body || '{}');
     const { imageBase64, visitorName, visitorType, lang } = body;
 
-    console.log('[Story Function] Request data:', { visitorName, visitorType, lang, hasImage: !!imageBase64 });
+    console.log('[Story Function] Request data:', { visitorName, visitorType, lang, hasImage: !!imageBase64, imageSize: imageBase64?.length });
 
     if (!imageBase64 || !visitorName || !visitorType || !lang) {
       console.error('[Story Function] Missing required fields');
@@ -53,6 +53,20 @@ export const handler: Handler = async (event: HandlerEvent) => {
         statusCode: 400,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ error: 'Missing required fields' })
+      };
+    }
+
+    // التحقق من حجم الصورة (max 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (imageBase64.length > maxSize) {
+      console.error('[Story Function] Image too large:', imageBase64.length);
+      return {
+        statusCode: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          error: 'Image too large',
+          message: lang === 'ar' ? 'الصورة كبيرة جداً. يرجى استخدام صورة أصغر.' : 'Image is too large. Please use a smaller image.'
+        })
       };
     }
 
@@ -107,7 +121,7 @@ CRITICAL:
         temperature: 0.8,
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 8192,
+        maxOutputTokens: 4096,
         stopSequences: []
       }
     };
