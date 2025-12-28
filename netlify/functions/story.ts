@@ -62,29 +62,17 @@ export const handler: Handler = async (event: HandlerEvent) => {
       : imageBase64;
 
     // بناء System Instruction
-    const prompt = `You are a plant expert at Al-Hariq Agri-Tourism Festival in Saudi Arabia.
+    const prompt = `Expert storyteller at Al-Hariq Festival, Saudi Arabia.
 
-STEP 1: Analyze the image. Is it a PLANT (tree, flower, herb, vegetable, fruit, shrub, cactus, etc.)?
+ANALYZE IMAGE: Is this a plant/tree?
 
-If NOT a plant (person, animal, building, object, food, etc.):
-Return JSON: {"is_plant": false, "error_message": "${lang === 'ar' ? 'عذراً، هذه الصورة لا تحتوي على نبتة! 🌱 يرجى تصوير نبتة أو شجرة.' : 'Sorry, this image does not contain a plant! 🌱 Please photograph a plant or tree.'}", "title": "", "story": "", "fun_fact": "", "question": "", "suggested_plant_name": "", "seasonal_status_hint": ""}
+NOT PLANT → {"is_plant":false,"error_message":"${lang === 'ar' ? 'عذراً، ليست نبتة! 🌱' : 'Not a plant! 🌱'}","title":"","story":"","fun_fact":"","question":"","suggested_plant_name":"","seasonal_status_hint":""}
 
-If YES a plant:
-Create a ${lang === 'ar' ? 'captivating Arabic' : 'captivating English'} story (100-150 words) for ${visitorName}, a ${visitorType}.
+YES PLANT → Write ${lang === 'ar' ? 'Arabic' : 'English'} story (120 words) for ${visitorName}:
 
-Return JSON:
-{
-  "is_plant": true,
-  "title": "Engaging title",
-  "story": "Story connecting plant to Saudi agriculture/Al-Hariq region if citrus, otherwise general agricultural wisdom",
-  "fun_fact": "Interesting fact about this plant type",
-  "question": "Thought-provoking question",
-  "suggested_plant_name": "Creative nickname in ${lang === 'ar' ? 'Arabic' : 'English'}",
-  "seasonal_status_hint": "Season/growth info"
-}
+{"is_plant":true,"title":"[catchy title]","story":"[IF CITRUS: link to Al-Hariq citrus heritage. ELSE: Saudi agriculture/nature wisdom. ${visitorType === 'child' ? 'Magical style' : visitorType === 'family' ? 'Nostalgic style' : 'Cultural style'}]","fun_fact":"[fact about plant]","question":"[question to visitor]","suggested_plant_name":"[creative name]","seasonal_status_hint":"[season info]"}
 
-Style: ${visitorType === 'child' ? 'magical, wonder-filled' : visitorType === 'family' ? 'warm, nostalgic' : 'inspiring, cultural'}. 
-Return ONLY valid JSON, no markdown.`.trim();
+CRITICAL: Return ONLY valid complete JSON. NO markdown. NO truncation.`.trim();
 
     // استدعاء Google Gemini API
     // استخدام gemini-2.5-flash - الأحدث ومتاح للـ free tier
@@ -105,10 +93,10 @@ Return ONLY valid JSON, no markdown.`.trim();
         }
       ],
       generationConfig: {
-        temperature: 0.7,
+        temperature: 0.8,
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 4096,
+        maxOutputTokens: 8192,
         stopSequences: []
       }
     };
@@ -254,32 +242,28 @@ Return ONLY valid JSON, no markdown.`.trim();
           aiResponse.seasonal_status_hint = aiResponse.seasonal_status_hint || 'نبتة موسمية';
           
         } catch (e2) {
-          console.error('[Story Function] Failed to fix JSON:', e2);
-          // آخر محاولة: نرجع response افتراضي بدلاً من error
-          aiResponse = {
-            is_plant: true,
-            title: 'نبتة جميلة',
-            story: 'التقطت صورة رائعة لهذه النبتة! النباتات جزء مهم من تراثنا الزراعي وطبيعتنا الخلابة.',
-            fun_fact: 'النباتات تساهم في تنقية الهواء وإنتاج الأكسجين.',
-            question: 'هل تعتني بالنباتات في منزلك؟',
-            suggested_plant_name: 'نبتة الطبيعة',
-            seasonal_status_hint: 'نبتة جميلة'
+          console.error('[Story Function] Failed to fix JSON after multiple attempts:', e2);
+          return {
+            statusCode: 500,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              error: 'Invalid AI response - could not parse JSON', 
+              fullText: text.substring(0, 500),
+              parseError: e instanceof Error ? e.message : 'Unknown error'
+            })
           };
-          console.log('[Story Function] Using fallback response');
         }
       } else {
-        console.error('[Story Function] Cannot fix JSON');
-        // استخدام fallback response
-        aiResponse = {
-          is_plant: true,
-          title: 'نبتة رائعة',
-          story: 'التقطت صورة جميلة لهذه النبتة! النباتات تضفي جمالاً على حياتنا وبيئتنا.',
-          fun_fact: 'كل نبتة لها دور مهم في النظام البيئي.',
-          question: 'ما رأيك في جمال هذه النبتة؟',
-          suggested_plant_name: 'نبتة الحديقة',
-          seasonal_status_hint: 'نبتة طبيعية'
+        console.error('[Story Function] Cannot fix JSON - structure too damaged');
+        return {
+          statusCode: 500,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            error: 'Invalid AI response format', 
+            fullText: text.substring(0, 500),
+            parseError: e instanceof Error ? e.message : 'Unknown error'
+          })
         };
-        console.log('[Story Function] Using fallback response due to parse error');
       }
     }
 
