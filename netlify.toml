@@ -1,33 +1,16 @@
 [build]
-  # أمر البناء
   command = "npm run build"
-  
-  # مجلد الناتج (Vite يستخدم dist افتراضياً)
   publish = "dist"
 
 [build.environment]
-  # إصدار Node.js
   NODE_VERSION = "18"
 
 [functions]
-  # مجلد الـ Functions
   directory = "netlify/functions"
-  # Node.js runtime للـ functions
   node_bundler = "esbuild"
-  # زيادة timeout للصور الكبيرة
-  timeout = 30
 
-# إعدادات التطوير المحلي
-[dev]
-  # المنفذ الذي يشتغل عليه Vite
-  targetPort = 3000
-  # المنفذ اللي Netlify Dev يشتغل عليه
-  port = 8888
-
-# إعادة توجيه جميع الطلبات إلى index.html للـ SPA (ما عدا الـ API)
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
   force = false
-
